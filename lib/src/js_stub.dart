@@ -18,7 +18,7 @@ class JsFunction extends JsObject {
     this["apply"] = new JsFunction._internal((that, args) {
       return this.apply(args, thisArg: that);
     });
-    this["call"] = new JsFunction._internal((that, [a1 = _UNDEFINED,
+    this["call"] = new JsFunction._internal((_that, that, [a1 = _UNDEFINED,
         a2 = _UNDEFINED, a3 = _UNDEFINED, a4 = _UNDEFINED, a5 = _UNDEFINED,
         a6 = _UNDEFINED, a7 = _UNDEFINED, a8 = _UNDEFINED, a9 = _UNDEFINED,
         a10 = _UNDEFINED]) {
