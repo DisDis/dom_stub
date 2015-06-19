@@ -2,21 +2,77 @@ library dom_stub.base;
 
 import 'dart:collection';
 
+const Object _UNDEFINED = const Object();
+const bool _isDebug = false;
+
 class JsFunction extends JsObject {
   final Function _function;
-  JsFunction._internal(Function function): _function = function,
-  super.internal();
+  JsFunction._internal(Function function)
+      : _function = function,
+        super.internal();
+
   JsFunction.internal(Function function)
       : _function = function,
         super.internal() {
     this["prototype"] = new JsObject.internal();
-    this["apply"] = new JsFunction._internal((that, args){
-      return this.apply(args, thisArg:that);
+    this["apply"] = new JsFunction._internal((that, args) {
+      return this.apply(args, thisArg: that);
     });
-//    this["call"] = new JsFunction.withThis((that, args){
-//      //return this.apply(args, thisArg:that);
-//      throw new UnimplementedError();
-//    });
+    this["call"] = new JsFunction._internal((that, [a1 = _UNDEFINED,
+        a2 = _UNDEFINED, a3 = _UNDEFINED, a4 = _UNDEFINED, a5 = _UNDEFINED,
+        a6 = _UNDEFINED, a7 = _UNDEFINED, a8 = _UNDEFINED, a9 = _UNDEFINED,
+        a10 = _UNDEFINED]) {
+      List args = [];
+      if (a1 != _UNDEFINED) {
+        args.add(a1);
+      }
+      if (a2 != _UNDEFINED) {
+        args.add(a2);
+      }
+      if (a3 != _UNDEFINED) {
+        args.add(a3);
+      }
+      if (a4 != _UNDEFINED) {
+        args.add(a4);
+      }
+      if (a5 != _UNDEFINED) {
+        args.add(a5);
+      }
+      if (a6 != _UNDEFINED) {
+        args.add(a6);
+      }
+      if (a7 != _UNDEFINED) {
+        args.add(a7);
+      }
+      if (a8 != _UNDEFINED) {
+        args.add(a8);
+      }
+      if (a9 != _UNDEFINED) {
+        args.add(a9);
+      }
+      if (a10 != _UNDEFINED) {
+        args.add(a10);
+      }
+      return this.apply(args, thisArg: that);
+    });
+  }
+
+  _getPrototypeValue(key) {
+    var result;
+    var prototype = (_obj["prototype"] as JsObject);
+    if (prototype != null) {
+      result = prototype._obj[key];
+    }
+    if (result == null) {
+      if (_constructor != null) {
+        return _constructor._getPrototypeValue(key);
+      }
+    }
+    if (result == null) {
+      return _UNDEFINED;
+    } else {
+      return result;
+    }
   }
 
   /**
@@ -30,15 +86,17 @@ class JsFunction extends JsObject {
    * supplied it is the value of `this` for the invocation.
    */
   dynamic apply(List args, {thisArg}) {
+    if (_isDebug){print("$this apply args:$args this:$thisArg");}
     if (thisArg == null) {
       thisArg = this;
     }
-    if (args == null){
+    if (args == null) {
       args = [];
     }
     return Function.apply(_function, [thisArg]..addAll(args));
   }
-  toString()=>"JsFunction#${id}";
+  @override
+  toString() => "JsFunction#${id}";
 }
 
 class JsArray<E> extends JsObject with ListMixin<E> {
@@ -138,7 +196,8 @@ class JsArray<E> extends JsObject with ListMixin<E> {
     //callMethod('sort', [compare]);
     _list.sort(compare);
   }
-  toString()=>"JsArray#${id}";
+  @override
+  toString() => "JsArray#${id}";
 }
 
 class JsObject {
@@ -146,7 +205,8 @@ class JsObject {
   JsFunction _constructor;
   static int _count = 0;
   final int id = _count++;
-  toString()=>"JsObject#${id}";
+  @override
+  toString() => "JsObject#${id}";
   JsObject.internal();
 
   /**
@@ -158,7 +218,8 @@ class JsObject {
 
   static JsObject _create(JsFunction constructor, arguments) {
     var result = new JsObject.internal().._constructor = constructor;
-    constructor.apply(arguments,thisArg:result);
+    result._obj["constructor"] = constructor;
+    constructor.apply(arguments, thisArg: result);
     return result;
   }
 
@@ -201,32 +262,47 @@ class JsObject {
   }
 
   operator [](property) {
-//    print("get prop: $property");
+    if (_isDebug){print("$this get['$property']");}
     var value = null;
-    if (!_obj.containsKey(property)){
-      if (_constructor!=null && _constructor != this) {
-        value = _constructor._obj["prototype"][property];
+    if (!_obj.containsKey(property)) {
+      if (_constructor != null) {
+        value = _constructor._getPrototypeValue(property);
       }
     } else {
       value = _obj[property];
     }
     if (value is JsProperty) {
-      return (value as JsProperty).getter.apply([value], thisArg: this);
+      var propertyO = (value as JsProperty);
+      if (propertyO.getter != null) {
+        return propertyO.getter.apply(null, thisArg: this);
+      }
+      return null;
     }
-    return value;
+    return value == _UNDEFINED ? null : value;
   }
 
   operator []=(property, value) {
-//    print("set prop: $property, $value");
-    var current = _obj[property];
+    if (_isDebug){print("$this set['$property'] = '$value'");}
+    var current = null;
+    if (!_obj.containsKey(property)) {
+      if (_constructor != null) {
+        current = _constructor._getPrototypeValue(property);
+      }
+    } else {
+      current = _obj[property];
+    }
     if (current is JsProperty) {
-      (current as JsProperty).setter.apply([value], thisArg: this);
+      var property = (current as JsProperty);
+      if (property.setter != null) {
+        property.setter.apply([value], thisArg: this);
+      }
     } else {
       _obj[property] = value;
     }
   }
 
   callMethod(String method, [List args]) {
+    if (_isDebug){print("$this call-> '$method' args:$args");}
     return (this[method] as JsFunction).apply(args, thisArg: this);
   }
 
@@ -234,15 +310,17 @@ class JsObject {
 
   bool hasProperty(String property) => _obj.containsKey(property);
 
-  //FIXME
-  bool instanceof(JsFunction type) => _constructor == type;
+  bool instanceof(JsFunction type) => _constructor == type ||
+      (_constructor != null && _constructor.instanceof(type));
 }
 
 class JsProperty {
+  final int id = JsObject._count++;
   final JsObject target;
   final JsFunction getter;
   final JsFunction setter;
   JsProperty(this.target, this.getter, this.setter);
+  toString() => "JsProperty#$id";
 }
 
 JsObject _context = _contextCreate();
@@ -250,12 +328,12 @@ JsObject get context => _context;
 
 JsObject _contextCreate() {
   var result = new JsObject.internal();
-  result["Object"] = new JsFunction.withThis((_){});
+  result["Object"] = new JsFunction.withThis((_) {});
   result["Object"]["defineProperty"] = new JsFunction.withThis((that, obj, prop,
       descriptor) {
     var getter = descriptor['get'];
     var setter = descriptor['set'];
-    obj[prop] = new JsProperty(obj, getter, setter);
+    obj._obj[prop] = new JsProperty(obj, getter, setter);
   });
   return result;
 }
