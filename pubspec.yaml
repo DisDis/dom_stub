@@ -1,13 +1,12 @@
 name: dom_stub
 description: A starting point for Dart libraries or applications.
 version: 0.0.1
-#author: <your name> <email@example.com>
-#homepage: https://www.example.com
+author: Igor Demyanov <igor.demyanov@gmail.com>
+homepage: https://github.com/DisDis/dom_stub
 environment:
   sdk: '>=1.9.3 <2.0.0'
 dependencies:
-#  lib_name: any
- code_transformers: any
+  code_transformers: '>=0.2.0 <0.3.0'
 dev_dependencies:
   test: '>=0.12.0 <0.13.0'
 transformers:
