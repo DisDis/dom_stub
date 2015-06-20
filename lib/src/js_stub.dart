@@ -14,11 +14,11 @@ class JsFunction extends JsObject {
   JsFunction.internal(Function function)
       : _function = function,
         super.internal() {
-    this["prototype"] = new JsObject.internal();
-    this["apply"] = new JsFunction._internal((that, args) {
+    _obj["prototype"] = new JsObject.internal().._constructor = this;
+    _obj["apply"] = new JsFunction._internal((that, args) {
       return this.apply(args, thisArg: that);
     });
-    this["call"] = new JsFunction._internal((_that, that, [a1 = _UNDEFINED,
+    _obj["call"] = new JsFunction._internal((_that, that, [a1 = _UNDEFINED,
         a2 = _UNDEFINED, a3 = _UNDEFINED, a4 = _UNDEFINED, a5 = _UNDEFINED,
         a6 = _UNDEFINED, a7 = _UNDEFINED, a8 = _UNDEFINED, a9 = _UNDEFINED,
         a10 = _UNDEFINED]) {
@@ -57,24 +57,6 @@ class JsFunction extends JsObject {
     });
   }
 
-  _getPrototypeValue(key) {
-    var result;
-    var prototype = (_obj["prototype"] as JsObject);
-    if (prototype != null) {
-      result = prototype._obj[key];
-    }
-    if (result == null) {
-      if (_constructor != null) {
-        return _constructor._getPrototypeValue(key);
-      }
-    }
-    if (result == null) {
-      return _UNDEFINED;
-    } else {
-      return result;
-    }
-  }
-
   /**
    * Returns a [JsFunction] that captures its 'this' binding and calls [f]
    * with the value of this passed as the first argument.
@@ -86,7 +68,9 @@ class JsFunction extends JsObject {
    * supplied it is the value of `this` for the invocation.
    */
   dynamic apply(List args, {thisArg}) {
-    if (_isDebug){print("$this apply args:$args this:$thisArg");}
+    if (_isDebug) {
+      print("$this apply args:$args this:$thisArg");
+    }
     if (thisArg == null) {
       thisArg = this;
     }
@@ -219,9 +203,12 @@ class JsObject {
   static JsObject _create(JsFunction constructor, arguments) {
     var result = new JsObject.internal().._constructor = constructor;
     result._obj["constructor"] = constructor;
+    result._obj["__proto__"] = constructor["prototype"];
     constructor.apply(arguments, thisArg: result);
     return result;
   }
+
+  JsObject get _prototype => _obj["__proto__"];
 
   /**
    * Constructs a [JsObject] that proxies a native Dart object; _for expert use
@@ -262,14 +249,14 @@ class JsObject {
   }
 
   operator [](property) {
-    if (_isDebug){print("$this get['$property']");}
+    if (_isDebug) {
+      print("$this get['$property']");
+    }
     var value = null;
-    if (!_obj.containsKey(property)) {
-      if (_constructor != null) {
-        value = _constructor._getPrototypeValue(property);
-      }
-    } else {
+    if (_obj.containsKey(property)) {
       value = _obj[property];
+    } else {
+      value = _getPrototypeValue(property);
     }
     if (value is JsProperty) {
       var propertyO = (value as JsProperty);
@@ -281,15 +268,32 @@ class JsObject {
     return value == _UNDEFINED ? null : value;
   }
 
-  operator []=(property, value) {
-    if (_isDebug){print("$this set['$property'] = '$value'");}
-    var current = null;
-    if (!_obj.containsKey(property)) {
-      if (_constructor != null) {
-        current = _constructor._getPrototypeValue(property);
+  _getPrototypeValue(key) {
+    var result;
+    var prototype = _prototype;
+    if (prototype != null) {
+      result = prototype._obj[key];
+      if (result == null) {
+        return prototype._getPrototypeValue(key);
       }
+    }
+
+    if (result == null) {
+      return _UNDEFINED;
     } else {
+      return result;
+    }
+  }
+
+  operator []=(property, value) {
+    if (_isDebug) {
+      print("$this set['$property'] = '$value'");
+    }
+    var current = null;
+    if (_obj.containsKey(property)) {
       current = _obj[property];
+    } else {
+      current = _getPrototypeValue(property);
     }
     if (current is JsProperty) {
       var property = (current as JsProperty);
@@ -302,7 +306,9 @@ class JsObject {
   }
 
   callMethod(String method, [List args]) {
-    if (_isDebug){print("$this call-> '$method' args:$args");}
+    if (_isDebug) {
+      print("$this call-> '$method' args:$args");
+    }
     return (this[method] as JsFunction).apply(args, thisArg: this);
   }
 
@@ -310,8 +316,22 @@ class JsObject {
 
   bool hasProperty(String property) => _obj.containsKey(property);
 
-  bool instanceof(JsFunction type) => _constructor == type ||
-      (_constructor != null && _constructor.instanceof(type));
+  bool instanceof(JsFunction type) {
+    if (type == null) {
+      return false;
+    }
+    if (_constructor == type) {
+      return true;
+    }
+    JsObject start = _prototype;
+    while (start != null) {
+      if (start._constructor == type) {
+        return true;
+      }
+      start = start._prototype;
+    }
+    return false;
+  }
 }
 
 class JsProperty {
@@ -323,12 +343,13 @@ class JsProperty {
   toString() => "JsProperty#$id";
 }
 
-JsObject _context = _contextCreate();
+final JsObject _context = _contextCreate();
 JsObject get context => _context;
+final JsFunction _OBJECT = new JsFunction.withThis((_) {});
 
 JsObject _contextCreate() {
   var result = new JsObject.internal();
-  result["Object"] = new JsFunction.withThis((_) {});
+  result["Object"] = _OBJECT;
   result["Object"]["defineProperty"] = new JsFunction.withThis((that, obj, prop,
       descriptor) {
     var getter = descriptor['get'];
