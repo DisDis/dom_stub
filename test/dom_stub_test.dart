@@ -10,6 +10,7 @@ import 'dart:js';
 import     'dart:js' as testJs;
 
 void main() {
+  // See js_mimicry package
   group('A group of tests', () {
     context["A"] = "A";
 
