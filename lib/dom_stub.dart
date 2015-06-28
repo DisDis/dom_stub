@@ -8,4 +8,5 @@ library dom_stub;
 
 // TODO: Export any libraries intended for clients of this package.
 
-export 'src/js_stub.dart';
+export 'src/js/js_stub.dart';
+export 'src/html/html_stub.dart';

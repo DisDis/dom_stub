@@ -81,10 +81,12 @@ class DomStubTransformer extends Transformer {
     CompilationUnit unit = parseCompilationUnit(inputCode, suppressErrors: true);
     var code = new TextEditTransaction(inputCode, sourceFile);
     unit.directives.where((item)=>item is ImportDirective).forEach((ImportDirective directive){
+      switch(directive.uri.stringValue){
+        case 'dart:js':
+        case 'dart:html':
+          code.edit(directive.uri.offset,directive.uri.end, JS_STUB_PACKAGE);
+          logger.info("Replace ${directive.uri} -> $JS_STUB_PACKAGE");
 
-      if (directive.uri.stringValue == 'dart:js'){
-        code.edit(directive.uri.offset,directive.uri.end, JS_STUB_PACKAGE);
-        logger.info("Replace ${directive.uri} -> $JS_STUB_PACKAGE");
       }
     });
     return code;

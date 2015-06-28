@@ -32,7 +32,13 @@ A simple usage example:
 DOM_STUB="true" pub serve
 pub run test --pub-serve=8080 -p vm
 ```
-
+# dart:html support
+Now 'dart:html' library supported via [mockito](https://github.com/fibulwinter/dart-mockito). Usage:
+```dart
+when(window.location.hash).thenReturn('#');
+expect(window.location.hash, "#");
+```
+At this moment only _window_ object mocked.
 ## Features and bugs
 
 Please file feature requests and bugs at the [issue tracker][tracker].
