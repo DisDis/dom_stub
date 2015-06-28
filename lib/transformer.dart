@@ -15,12 +15,31 @@ class DomStubTransformer extends Transformer {
   static final bool isDomStub = Platform.environment["DOM_STUB"] != null;
   final bool releaseMode;
   final List<String> _files;
-  DomStubTransformer([List<String> files, bool releaseMode])
+  final Map<String, String> imports;
+  RegExp _importMatcher;
+  static const String JS_STUB_PACKAGE = 'package:dom_stub/dom_stub.dart';
+
+  DomStubTransformer([List<String> files, bool releaseMode, this.imports])
       : _files = files,
-        releaseMode = releaseMode == true {}
+        releaseMode = releaseMode == true {
+    _init();
+  }
   DomStubTransformer.asPlugin(BarbackSettings settings)
       : _files = _readFiles(settings.configuration['files']),
-        releaseMode = settings.mode == BarbackMode.RELEASE {}
+        releaseMode = settings.mode == BarbackMode.RELEASE,
+        imports = _readImports(settings.configuration['imports']) {
+    _init();
+  }
+
+  _init() {
+    imports['dart:js'] = JS_STUB_PACKAGE;
+    imports['dart:html'] = JS_STUB_PACKAGE;
+    StringBuffer sb = new StringBuffer();
+    sb.write("import[ ]*('|\")(");
+    sb.write(imports.keys.join('|'));
+    sb.write(")('|\")");
+    _importMatcher = new RegExp(sb.toString());
+  }
 
   static List<String> _readFiles(value) {
     if (value == null) return null;
@@ -35,8 +54,18 @@ class DomStubTransformer extends Transformer {
     } else {
       error = true;
     }
-    if (error) print('Invalid value for "files" in the observe transformer.');
+    if (error) print('Invalid value for "files" in the dom_stub transformer.');
     return files;
+  }
+
+  static Map<String, String> _readImports(value) {
+    if (value == null) return {};
+    if (value is Map) {
+      return value;
+    } else {
+      print('Invalid value for "imports" in the dom_stub transformer.');
+    }
+    return {};
   }
 
 // TODO(nweiz): This should just take an AssetId when barback <0.13.0 support
@@ -54,7 +83,7 @@ class DomStubTransformer extends Transformer {
       // plausibly might need to be transformed. If not, we can avoid an
       // expensive parse.
 
-      if (!jsHtmlMatcher.hasMatch(content)) return null;
+      if (!_importMatcher.hasMatch(content)) return null;
 
       var id = transform.primaryInput.id;
       // TODO(sigmund): improve how we compute this url
@@ -63,7 +92,8 @@ class DomStubTransformer extends Transformer {
           : id.path;
       var sourceFile = new SourceFile(content, url: url);
 
-      var transaction = transformCompilationUnit(content, sourceFile, transform.logger);
+      var transaction =
+          transformCompilationUnit(content, sourceFile, transform.logger);
       if (!transaction.hasEdits) {
         transform.addOutput(transform.primaryInput);
       } else {
@@ -76,23 +106,25 @@ class DomStubTransformer extends Transformer {
     });
   }
 
+  _replaceImport(TextEditTransaction code, ImportDirective directive,
+      TransformLogger logger, String newImport) {
+    code.edit(directive.uri.offset+1, directive.uri.end-1, newImport);
+    logger.info("Replace ${directive.uri} -> '$newImport'");
+  }
+
   TextEditTransaction transformCompilationUnit(
       String inputCode, SourceFile sourceFile, TransformLogger logger) {
-    CompilationUnit unit = parseCompilationUnit(inputCode, suppressErrors: true);
+    CompilationUnit unit =
+        parseCompilationUnit(inputCode, suppressErrors: true);
     var code = new TextEditTransaction(inputCode, sourceFile);
-    unit.directives.where((item)=>item is ImportDirective).forEach((ImportDirective directive){
-      switch(directive.uri.stringValue){
-        case 'dart:js':
-        case 'dart:html':
-          code.edit(directive.uri.offset,directive.uri.end, JS_STUB_PACKAGE);
-          logger.info("Replace ${directive.uri} -> $JS_STUB_PACKAGE");
-
+    unit.directives
+        .where((item) => item is ImportDirective)
+        .forEach((ImportDirective directive) {
+      var v = imports[directive.uri.stringValue];
+      if (v != null) {
+        _replaceImport(code, directive, logger, v);
       }
     });
     return code;
   }
-  static const String JS_STUB_PACKAGE = '"package:dom_stub/dom_stub.dart"';
 }
-
-final jsHtmlMatcher =
-    new RegExp("import[ ]*('|\")(dart:js|dart:html)('|\")");

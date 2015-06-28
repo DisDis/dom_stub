@@ -39,6 +39,16 @@ when(window.location.hash).thenReturn('#');
 expect(window.location.hash, "#");
 ```
 At this moment only _window_ object mocked.
+
+# replace any import
+
+```yaml
+transformers:
+ - dom_stub:
+      imports: { 'browser_cfg.dart': 'vm_cfg.dart' }
+```
+Replace 'browser_cfg.dart' to 'vm_cfg.dart'
+
 ## Features and bugs
 
 Please file feature requests and bugs at the [issue tracker][tracker].
