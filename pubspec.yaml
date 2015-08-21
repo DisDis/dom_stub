@@ -1,6 +1,6 @@
 name: dom_stub
 description: Implementing 'dart:js'. It allows to run browser test in VM mode.
-version: 0.0.2
+version: 0.0.3
 author: Igor Demyanov <igor.demyanov@gmail.com>
 homepage: https://github.com/DisDis/dom_stub
 environment:
