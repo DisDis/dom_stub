@@ -106,7 +106,7 @@ class DomStubTransformer extends Transformer {
     });
   }
 
-  _replaceImport(TextEditTransaction code, ImportDirective directive,
+  _replacePackageName(TextEditTransaction code, NamespaceDirective directive,
       TransformLogger logger, String newImport) {
     code.edit(directive.uri.offset+1, directive.uri.end-1, newImport);
     logger.info("Replace ${directive.uri} -> '$newImport'");
@@ -122,7 +122,15 @@ class DomStubTransformer extends Transformer {
         .forEach((ImportDirective directive) {
       var v = imports[directive.uri.stringValue];
       if (v != null) {
-        _replaceImport(code, directive, logger, v);
+        _replacePackageName(code, directive, logger, v);
+      }
+    });
+    unit.directives
+    .where((item) => item is ExportDirective)
+    .forEach((ExportDirective directive) {
+      var v = imports[directive.uri.stringValue];
+      if (v != null) {
+        _replacePackageName(code, directive, logger, v);
       }
     });
     return code;
