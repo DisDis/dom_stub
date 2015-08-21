@@ -3,6 +3,7 @@ library dom_stub.test;
 import 'package:test/test.dart';
 
 import 'dart:js';
+export 'dart:js';
 
 void main() {
   // See js_mimicry package
